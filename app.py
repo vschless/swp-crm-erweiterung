@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from models import Customer, Lead
 from db import db
+from sqlalchemy import func
+
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///crm.db"
@@ -24,9 +26,39 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    total_customers = len(Customer.get_all_customers())
-    total_leads = len(Lead.get_all_leads())
-    return render_template('index.html', total_customers=total_customers, total_leads=total_leads)
+    # KPI: totals
+    total_customers = Customer.query.count()
+    total_leads = Lead.query.count()
+
+    # KPI: lead value stats
+    lead_value_sum = db.session.query(func.coalesce(func.sum(Lead.value), 0)).scalar()
+    lead_value_avg = db.session.query(func.coalesce(func.avg(Lead.value), 0)).scalar()
+
+    # Chart 1: customers by status
+    customer_status_rows = (
+        db.session.query(Customer.status, func.count(Customer.id))
+        .group_by(Customer.status)
+        .all()
+    )
+    customers_by_status = {status: count for status, count in customer_status_rows}
+
+    # Chart 2: leads by source
+    lead_source_rows = (
+        db.session.query(Lead.source, func.count(Lead.id))
+        .group_by(Lead.source)
+        .all()
+    )
+    leads_by_source = {source: count for source, count in lead_source_rows}
+
+    return render_template(
+        'index.html',
+        total_customers=total_customers,
+        total_leads=total_leads,
+        lead_value_sum=lead_value_sum,
+        lead_value_avg=lead_value_avg,
+        customers_by_status=customers_by_status,
+        leads_by_source=leads_by_source
+    )
 
 @app.route('/customers')
 def customers():
