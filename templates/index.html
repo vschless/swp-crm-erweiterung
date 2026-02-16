@@ -12,4 +12,74 @@
     <a href="{{ url_for('customers') }}" class="btn btn-primary" style="margin-right: 1rem;">View Customers</a>
     <a href="{{ url_for('leads') }}" class="btn btn-primary">View Leads</a>
 </div>
+
+<hr style="margin: 2rem 0;">
+
+<!-- KPI Cards -->
+<div class="dashboard-cards">
+  <div class="card">
+    <h3>Total Customers</h3>
+    <p>{{ total_customers }}</p>
+  </div>
+
+  <div class="card">
+    <h3>Total Leads</h3>
+    <p>{{ total_leads }}</p>
+  </div>
+
+  <div class="card">
+    <h3>Lead Value (Sum)</h3>
+    <p>{{ "%.2f"|format(lead_value_sum) }}</p>
+  </div>
+
+  <div class="card">
+    <h3>Lead Value (Avg)</h3>
+    <p>{{ "%.2f"|format(lead_value_avg) }}</p>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="dashboard-charts" style="margin-top: 2rem;">
+  <div class="chart-card">
+    <h3>Customers by Status</h3>
+    <canvas id="customersByStatusChart"></canvas>
+  </div>
+
+  <div class="chart-card" style="margin-top: 2rem;">
+    <h3>Leads by Source</h3>
+    <canvas id="leadsBySourceChart"></canvas>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const customersByStatusLabels = {{ customers_by_status.keys()|list|tojson }};
+  const customersByStatusData = {{ customers_by_status.values()|list|tojson }};
+
+  const leadsBySourceLabels = {{ leads_by_source.keys()|list|tojson }};
+  const leadsBySourceData = {{ leads_by_source.values()|list|tojson }};
+
+  new Chart(document.getElementById('customersByStatusChart'), {
+    type: 'bar',
+    data: {
+      labels: customersByStatusLabels,
+      datasets: [{
+        label: 'Customers',
+        data: customersByStatusData
+      }]
+    }
+  });
+
+  new Chart(document.getElementById('leadsBySourceChart'), {
+    type: 'pie',
+    data: {
+      labels: leadsBySourceLabels,
+      datasets: [{
+        label: 'Leads',
+        data: leadsBySourceData
+      }]
+    }
+  });
+</script>
 {% endblock %}
