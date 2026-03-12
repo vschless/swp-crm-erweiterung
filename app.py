@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from models import Customer, Lead
 from db import db
 from sqlalchemy import func
@@ -10,6 +10,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 app.secret_key = 'your-secret-key-change-this'
 
+
 def init_sample_data():
     # only seed if tables are empty (prevents duplicates on restart)
     if Customer.query.count() == 0 and Lead.query.count() == 0:
@@ -20,12 +21,8 @@ def init_sample_data():
         Lead.add_lead('Alice Brown', 'alice@example.com', 'StartUp Inc', 50000, 'Website')
         Lead.add_lead('Charlie Davis', 'charlie@example.com', 'Enterprise Ltd', 100000, 'Referral')
 
-with app.app_context():
-    db.create_all()
-    init_sample_data()
 
-@app.route('/')
-def index():
+def get_dashboard_data():
     # KPI: totals
     total_customers = Customer.query.count()
     total_leads = Lead.query.count()
@@ -50,19 +47,36 @@ def index():
     )
     leads_by_source = {source: count for source, count in lead_source_rows}
 
-    return render_template(
-        'index.html',
-        total_customers=total_customers,
-        total_leads=total_leads,
-        lead_value_sum=lead_value_sum,
-        lead_value_avg=lead_value_avg,
-        customers_by_status=customers_by_status,
-        leads_by_source=leads_by_source
-    )
+    return {
+        "total_customers": total_customers,
+        "total_leads": total_leads,
+        "lead_value_sum": float(lead_value_sum),
+        "lead_value_avg": float(lead_value_avg),
+        "customers_by_status": customers_by_status,
+        "leads_by_source": leads_by_source
+    }
+
+
+with app.app_context():
+    db.create_all()
+    init_sample_data()
+
+
+@app.route('/')
+def index():
+    dashboard_data = get_dashboard_data()
+    return render_template('index.html', **dashboard_data)
+
+
+@app.route('/api/dashboard')
+def api_dashboard():
+    return jsonify(get_dashboard_data())
+
 
 @app.route('/customers')
 def customers():
     return render_template('customers.html', customers=Customer.get_all_customers())
+
 
 @app.route('/customers/add', methods=['GET', 'POST'])
 def add_customer():
@@ -80,7 +94,9 @@ def add_customer():
         Customer.add_customer(name, email, company, phone, status)
         flash(f'Customer {name} added successfully!', 'success')
         return redirect(url_for('customers'))
+
     return render_template('add_customer.html')
+
 
 @app.route('/customers/<int:customer_id>')
 def customer_detail(customer_id):
@@ -90,6 +106,7 @@ def customer_detail(customer_id):
         return redirect(url_for('customers'))
     return render_template('customer_detail.html', customer=customer)
 
+
 @app.route('/customers/<int:customer_id>/edit', methods=['GET', 'POST'])
 def edit_customer(customer_id):
     customer = Customer.get_customer_by_id(customer_id)
@@ -98,12 +115,19 @@ def edit_customer(customer_id):
         return redirect(url_for('customers'))
 
     if request.method == 'POST':
-        Customer.update_customer(customer_id, request.form.get('name'), request.form.get('email'), 
-                                request.form.get('company'), request.form.get('phone'), request.form.get('status'))
+        Customer.update_customer(
+            customer_id,
+            request.form.get('name'),
+            request.form.get('email'),
+            request.form.get('company'),
+            request.form.get('phone'),
+            request.form.get('status')
+        )
         flash('Customer updated successfully!', 'success')
         return redirect(url_for('customer_detail', customer_id=customer_id))
 
     return render_template('edit_customer.html', customer=customer)
+
 
 @app.route('/customers/<int:customer_id>/delete', methods=['POST'])
 def delete_customer(customer_id):
@@ -111,9 +135,11 @@ def delete_customer(customer_id):
     flash('Customer deleted successfully!', 'success')
     return redirect(url_for('customers'))
 
+
 @app.route('/leads')
 def leads():
     return render_template('leads.html', leads=Lead.get_all_leads())
+
 
 @app.route('/leads/add', methods=['GET', 'POST'])
 def add_lead():
@@ -135,7 +161,9 @@ def add_lead():
             flash('Deal value must be a number!', 'error')
 
         return redirect(url_for('leads'))
+
     return render_template('add_lead.html')
+
 
 @app.route('/leads/<int:lead_id>')
 def lead_detail(lead_id):
@@ -145,19 +173,23 @@ def lead_detail(lead_id):
         return redirect(url_for('leads'))
     return render_template('lead_detail.html', lead=lead)
 
+
 @app.route('/leads/<int:lead_id>/delete', methods=['POST'])
 def delete_lead(lead_id):
     Lead.delete_lead(lead_id)
     flash('Lead deleted successfully!', 'success')
     return redirect(url_for('leads'))
 
+
 @app.errorhandler(404)
 def page_not_found(error):
     return render_template('404.html'), 404
 
+
 @app.errorhandler(500)
 def internal_error(error):
     return render_template('500.html'), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='127.0.0.1', port=5000)
