@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="login-page">
+    <div class="login-card">
+        <h1>Pink CRM Login</h1>
+        <p>Please log in with your account</p>
+
+        <form method="POST">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+
+            <button type="submit" class="btn">Login</button>
+        </form>
+
+        <div class="helper-box">
+            <p><strong>Admin:</strong> admin / admin123</p>
+            <p><strong>User:</strong> user / user123</p>
+            <p>Admins can add, edit and delete data.</p>
+            <p>Users can view the dashboard, customers and leads.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
